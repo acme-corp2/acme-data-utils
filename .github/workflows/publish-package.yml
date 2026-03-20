@@ -301,23 +301,28 @@ jobs:
 
           echo "Raw package query result: $PKGS_JSON"
 
-          UNIQUE_ID=$(echo "$PKGS_JSON" | python3 -c "
+          UNIQUE_IDS=$(echo "$PKGS_JSON" | python3 -c "
           import json, sys
-          data = json.load(sys.stdin)
-          if not data:
-              print('ERROR: No package found in QA', file=sys.stderr)
+          response = json.load(sys.stdin)
+          pkgs = response.get('data', [])
+          if not pkgs:
+              print('ERROR: No packages found in QA', file=sys.stderr)
               sys.exit(1)
-          print(data[0]['slug_perm'])
+          for pkg in pkgs:
+              print(pkg['slug_perm'])
           ")
 
-          echo "Package unique ID: $UNIQUE_ID"
+          echo "Package unique IDs: $UNIQUE_IDS"
 
-          # Move the package from QA to Production (removes from QA, adds to Prod)
-          cloudsmith move \
-            ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/$UNIQUE_ID \
-            ${{ env.PROD_REPO }}
+          # Move all packages (whl + tar.gz) from QA to Production
+          for UNIQUE_ID in $UNIQUE_IDS; do
+            echo "Moving package $UNIQUE_ID to production..."
+            cloudsmith move \
+              ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/$UNIQUE_ID \
+              ${{ env.PROD_REPO }}
+          done
 
-          echo "Package moved to production successfully!"
+          echo "All packages moved to production successfully!"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
