@@ -27,6 +27,7 @@ permissions:
   contents: read   # Required to checkout code
   pull-requests: write  # Required to comment on PRs
   actions: read    # Required to read workflow artifacts
+  checks: write    # Required to publish test results
 
 env:
   PYTHON_VERSION: "3.11"
