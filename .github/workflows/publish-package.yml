@@ -319,7 +319,8 @@ jobs:
             echo "Moving package $UNIQUE_ID to production..."
             cloudsmith move \
               ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/$UNIQUE_ID \
-              ${{ env.PROD_REPO }}
+              ${{ env.PROD_REPO }} \
+              --yes
           done
 
           echo "All packages moved to production successfully!"
