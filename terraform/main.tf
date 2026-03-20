@@ -199,21 +199,35 @@ resource "cloudsmith_entitlement" "developer_readonly_prod" {
 # Webhook Configuration (Optional - for notifications)
 # ------------------------------------------------------------------------------
 
-# Webhook to notify when packages are published to QA
-# Can be used to trigger Slack notifications, external systems, etc.
-# resource "cloudsmith_webhook" "qa_package_published" {
-#   namespace  = var.cloudsmith_namespace
-#   repository = cloudsmith_repository.qa.slug
-#
-#   target_url = var.webhook_url  # e.g., Slack webhook URL
-#
-#   events = [
-#     "package.created",
-#     "package.security.scanned"
-#   ]
-#
-#   is_active = true
-#
-#   # Template for webhook payload
-#   template_format = "json"
-# }
+# Webhook — notify Slack when a package is published to QA
+resource "cloudsmith_webhook" "qa_package_published" {
+  count      = var.webhook_url != "" ? 1 : 0
+  namespace  = var.cloudsmith_namespace
+  repository = cloudsmith_repository.qa.slug
+
+  target_url = var.webhook_url
+
+  events = [
+    "package.created",
+    "package.synced",
+    "package.security_scanned"
+  ]
+
+  is_active = true
+}
+
+# Webhook — notify Slack when a package is moved into Production
+resource "cloudsmith_webhook" "prod_package_published" {
+  count      = var.webhook_url != "" ? 1 : 0
+  namespace  = var.cloudsmith_namespace
+  repository = cloudsmith_repository.prod.slug
+
+  target_url = var.webhook_url
+
+  events = [
+    "package.created",
+    "package.synced"
+  ]
+
+  is_active = true
+}

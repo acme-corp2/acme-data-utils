@@ -159,20 +159,15 @@ jobs:
 
       - name: Publish to QA repository
         run: |
-          # The cloudsmith-cli is pre-installed and authenticated by the action above
-          # CLOUDSMITH_API_KEY environment variable is automatically set
-
           cloudsmith push python \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
             dist/*.whl \
-            --republish \
-            --tags "branch-main,commit-${{ github.sha }},run-${{ github.run_id }}"
+            --republish
 
           cloudsmith push python \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
             dist/*.tar.gz \
-            --republish \
-            --tags "branch-main,commit-${{ github.sha }},run-${{ github.run_id }}"
+            --republish
 
       - name: Get package version
         id: version
@@ -199,6 +194,55 @@ jobs:
           echo "1. Verify package in QA repository" >> $GITHUB_STEP_SUMMARY
           echo "2. Test package installation and functionality" >> $GITHUB_STEP_SUMMARY
           echo "3. Approve production promotion when ready" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify team on Slack
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Package Published to QA — Awaiting Approval"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Package:*\n`${{ env.PACKAGE_NAME }}`" },
+                    { "type": "mrkdwn", "text": "*Version:*\n`${{ steps.version.outputs.version }}`" },
+                    { "type": "mrkdwn", "text": "*Repository:*\n`${{ env.QA_REPO }}`" },
+                    { "type": "mrkdwn", "text": "*Commit:*\n`${{ github.sha }}`" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Verify the package in QA, then trigger *Promote Package to Production* from the Actions tab when ready."
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View in CloudSmith QA" },
+                      "url": "https://cloudsmith.io/~${{ env.CLOUDSMITH_NAMESPACE }}/repos/${{ env.QA_REPO }}/"
+                    },
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View Workflow Run" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
 
   # ---------------------------------------------------------------------------
   # Stage 4: Manual Approval Gate (via Environment)
@@ -247,18 +291,22 @@ jobs:
 
       - name: Promote package to production
         run: |
-          # Use CloudSmith copy command to promote from QA to Production
-          # This maintains package immutability and provenance
-
           echo "Promoting ${{ env.PACKAGE_NAME }} v${{ steps.version.outputs.version }} from QA to Production..."
 
-          # Copy wheel file
-          cloudsmith copy python \
-            ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/${{ env.PACKAGE_NAME }}/${{ steps.version.outputs.version }} \
-            ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.PROD_REPO }} \
-            --tags "promoted,promoted-from-qa,promoted-by-github-actions,run-${{ github.run_id }}"
+          # Look up the unique identifier of the package in QA
+          UNIQUE_ID=$(cloudsmith ls pkgs \
+            ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
+            -q "name:${{ env.PACKAGE_NAME }} version:${{ steps.version.outputs.version }}" \
+            -F json | python3 -c "import json,sys; pkgs=json.load(sys.stdin); print(pkgs[0]['slug_perm'])")
 
-          echo "✅ Package promoted to production successfully!"
+          echo "Package unique ID: $UNIQUE_ID"
+
+          # Move the package from QA to Production (removes from QA, adds to Prod)
+          cloudsmith move \
+            ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/$UNIQUE_ID \
+            ${{ env.PROD_REPO }}
+
+          echo "Package moved to production successfully!"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -303,22 +351,44 @@ jobs:
           echo "### ✅ Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "The package is now available in production for all users." >> $GITHUB_STEP_SUMMARY
 
-      # Optional: Send notifications (uncomment and configure as needed)
-      # - name: Notify team
-      #   uses: slackapi/slack-github-action@v1
-      #   with:
-      #     payload: |
-      #       {
-      #         "text": "🚀 ${{ env.PACKAGE_NAME }} v${{ steps.version.outputs.version }} promoted to production!",
-      #         "blocks": [
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": "🚀 *${{ env.PACKAGE_NAME }}* v${{ steps.version.outputs.version }} promoted to production!"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Notify team on Slack
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Package Promoted to Production"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Package:*\n`${{ env.PACKAGE_NAME }}`" },
+                    { "type": "mrkdwn", "text": "*Version:*\n`${{ steps.version.outputs.version }}`" },
+                    { "type": "mrkdwn", "text": "*Repository:*\n`${{ env.PROD_REPO }}`" },
+                    { "type": "mrkdwn", "text": "*Promoted by:*\n`${{ github.actor }}`" }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View in CloudSmith" },
+                      "url": "https://cloudsmith.io/~${{ env.CLOUDSMITH_NAMESPACE }}/repos/${{ env.PROD_REPO }}/"
+                    },
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View Workflow Run" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
