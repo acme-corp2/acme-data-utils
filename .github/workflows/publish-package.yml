@@ -294,10 +294,21 @@ jobs:
           echo "Promoting ${{ env.PACKAGE_NAME }} v${{ steps.version.outputs.version }} from QA to Production..."
 
           # Look up the unique identifier of the package in QA
-          UNIQUE_ID=$(cloudsmith ls pkgs \
+          PKGS_JSON=$(cloudsmith list packages \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
             -q "name:${{ env.PACKAGE_NAME }} version:${{ steps.version.outputs.version }}" \
-            -F json | python3 -c "import json,sys; pkgs=json.load(sys.stdin); print(pkgs[0]['slug_perm'])")
+            -F pretty_json)
+
+          echo "Raw package query result: $PKGS_JSON"
+
+          UNIQUE_ID=$(echo "$PKGS_JSON" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          if not data:
+              print('ERROR: No package found in QA', file=sys.stderr)
+              sys.exit(1)
+          print(data[0]['slug_perm'])
+          ")
 
           echo "Package unique ID: $UNIQUE_ID"
 
