@@ -32,7 +32,7 @@ permissions:
 env:
   PYTHON_VERSION: "3.11"
   PACKAGE_NAME: "acme-data-utils"
-  CLOUDSMITH_NAMESPACE: "acme"  # Update this with your CloudSmith org
+  CLOUDSMITH_NAMESPACE: "acme-4ngc"  # Updated to match actual CloudSmith org
   QA_REPO: "acme-pypi-qa"
   PROD_REPO: "acme-pypi-prod"
 
