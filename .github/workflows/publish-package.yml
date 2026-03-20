@@ -154,9 +154,8 @@ jobs:
         uses: cloudsmith-io/cloudsmith-cli-action@v2
         with:
           oidc-namespace: ${{ env.CLOUDSMITH_NAMESPACE }}
-          oidc-service-slug: 'github-actions-service'
-          # Note: Ensure OIDC provider is configured in CloudSmith UI
-          # with claims: repository, ref=refs/heads/main
+          oidc-service-slug: 'github-actions-service-y7fn'
+          # Service slug must match Terraform output: github-actions-service-y7fn
 
       - name: Publish to QA repository
         run: |
@@ -240,7 +239,7 @@ jobs:
         uses: cloudsmith-io/cloudsmith-cli-action@v2
         with:
           oidc-namespace: ${{ env.CLOUDSMITH_NAMESPACE }}
-          oidc-service-slug: 'github-actions-service'
+          oidc-service-slug: 'github-actions-service-y7fn'
 
       - name: Get package version
         id: version
