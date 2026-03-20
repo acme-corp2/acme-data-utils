@@ -24,7 +24,7 @@ on:
 # Required permissions for OIDC authentication
 permissions:
   id-token: write  # Required to request OIDC token from GitHub
-  contents: read   # Required to checkout code
+  contents: read
   pull-requests: write  # Required to comment on PRs
   actions: read    # Required to read workflow artifacts
   checks: write    # Required to publish test results
@@ -325,37 +325,6 @@ jobs:
 
           echo "All packages moved to production successfully!"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
-          body: |
-            ## 🚀 Release v${{ steps.version.outputs.version }}
-
-            This release has been promoted to production.
-
-            ### 📦 Package Information
-            - **Package**: `${{ env.PACKAGE_NAME }}`
-            - **Version**: `${{ steps.version.outputs.version }}`
-            - **Repository**: `${{ env.PROD_REPO }}`
-
-            ### 🔗 Links
-            - [View in CloudSmith](https://cloudsmith.io/~${{ env.CLOUDSMITH_NAMESPACE }}/repos/${{ env.PROD_REPO }}/packages/detail/python/${{ env.PACKAGE_NAME }}/${{ steps.version.outputs.version }}/)
-            - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            ### 📥 Installation
-            ```bash
-            pip install ${{ env.PACKAGE_NAME }}==${{ steps.version.outputs.version }} \
-              --index-url https://dl.cloudsmith.io/basic/${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.PROD_REPO }}/python/simple/
-            ```
-
-            ### 🔄 Changes
-            ${{ github.event.head_commit.message }}
-          draft: false
-          prerelease: false
 
       - name: Summary
         run: |
