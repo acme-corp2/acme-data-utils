@@ -166,17 +166,13 @@ jobs:
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
             dist/*.whl \
             --republish \
-            --tags "branch:main" \
-            --tags "commit:${{ github.sha }}" \
-            --tags "workflow:${{ github.run_id }}"
+            --tags "branch-main,commit-${{ github.sha }},run-${{ github.run_id }}"
 
           cloudsmith push python \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }} \
             dist/*.tar.gz \
             --republish \
-            --tags "branch:main" \
-            --tags "commit:${{ github.sha }}" \
-            --tags "workflow:${{ github.run_id }}"
+            --tags "branch-main,commit-${{ github.sha }},run-${{ github.run_id }}"
 
       - name: Get package version
         id: version
@@ -261,10 +257,7 @@ jobs:
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/${{ env.PACKAGE_NAME }}/${{ steps.version.outputs.version }} \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.PROD_REPO }} \
             --wait \
-            --tags "promoted:true" \
-            --tags "promoted-from:qa" \
-            --tags "promoted-by:github-actions" \
-            --tags "workflow:${{ github.run_id }}"
+            --tags "promoted,promoted-from-qa,promoted-by-github-actions,run-${{ github.run_id }}"
 
           echo "✅ Package promoted to production successfully!"
 
