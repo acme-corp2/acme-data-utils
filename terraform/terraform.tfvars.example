@@ -1,0 +1,59 @@
+# Example Terraform variables file
+# Copy this to terraform.tfvars and fill in your values
+# IMPORTANT: Never commit terraform.tfvars to version control!
+
+# ------------------------------------------------------------------------------
+# CloudSmith Configuration
+# ------------------------------------------------------------------------------
+
+# Your CloudSmith organization/namespace
+cloudsmith_namespace = "acme"
+
+# CloudSmith API key for Terraform (to provision resources)
+# Get this from: https://cloudsmith.io/user/settings/api/
+# Requires: Manager or Owner role
+cloudsmith_api_key = "your-cloudsmith-api-key-here"
+
+# Admin user slug (your CloudSmith username)
+# This prevents lockout when managing repository privileges
+# Example: if your username is "Kapil Sharma", the slug might be "kapil-sharma"
+admin_user_slug = "your-username-slug-here"
+
+# ------------------------------------------------------------------------------
+# Repository Names
+# ------------------------------------------------------------------------------
+
+qa_repository_name   = "acme-pypi-qa"
+prod_repository_name = "acme-pypi-prod"
+
+# ------------------------------------------------------------------------------
+# GitHub Repository (for OIDC claims)
+# ------------------------------------------------------------------------------
+
+# Format: "github-org/repo-name"
+github_repository = "acme-corp/acme-data-utils"
+
+# Branch that is allowed to publish (typically main)
+github_ref = "refs/heads/main"
+
+# ------------------------------------------------------------------------------
+# Optional Configuration
+# ------------------------------------------------------------------------------
+
+# Storage region (optional - leave as default for optimal CloudSmith routing)
+storage_region = "default"
+
+# Service account name (used for OIDC)
+service_account_name = "github-actions-service"
+
+# Webhook URL for notifications (optional - leave empty to disable)
+# webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Tags for organization
+tags = {
+  project     = "acme-data-utils"
+  environment = "production"
+  managed_by  = "terraform"
+  team        = "devops"
+  owner       = "platform-team@acme-corp.com"
+}
