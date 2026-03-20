@@ -256,7 +256,6 @@ jobs:
           cloudsmith copy python \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.QA_REPO }}/${{ env.PACKAGE_NAME }}/${{ steps.version.outputs.version }} \
             ${{ env.CLOUDSMITH_NAMESPACE }}/${{ env.PROD_REPO }} \
-            --wait \
             --tags "promoted,promoted-from-qa,promoted-by-github-actions,run-${{ github.run_id }}"
 
           echo "✅ Package promoted to production successfully!"
