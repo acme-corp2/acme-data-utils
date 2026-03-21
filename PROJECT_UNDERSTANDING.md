@@ -71,12 +71,14 @@ Step 1 — Fill in terraform/terraform.tfvars
 Step 2 — cd terraform && terraform init && terraform apply
          Creates all CloudSmith resources (see Section 8 for full list)
 
-Step 3 — Copy values from terraform output into workflow
-         terraform output github_actions_workflow_config
-         oidc_namespace    → CLOUDSMITH_NAMESPACE in workflow env  (e.g. "acme-4ngc")
-         oidc_service_slug → oidc-service-slug in workflow         (e.g. "github-actions-service-4aah")
-         NOTE: CloudSmith auto-appends a random suffix to service account name.
-               Always use the value from terraform output, not the name you typed.
+Step 3 — Run the sync script to update the workflow automatically
+         bash scripts/sync-terraform-config.sh
+         This reads terraform output and patches the workflow file with:
+           CLOUDSMITH_NAMESPACE  → correct namespace
+           oidc-service-slug     → correct slug (all 3 occurrences: build, publish-qa, promote-prod)
+         NOTE: CloudSmith auto-appends a random suffix to service account name (e.g. github-actions-service-4aah).
+               If you ever run terraform destroy + terraform apply again the suffix changes —
+               just re-run the script and it updates everything automatically.
 
 Step 4 — Configure GitHub Environment
          Settings → Environments → New environment → name: "production"
