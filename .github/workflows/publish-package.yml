@@ -66,12 +66,14 @@ jobs:
         run: |
           BASE_VERSION=$(python -c "import configparser; c = configparser.ConfigParser(); c.read('acme-data-utils/setup.cfg'); print(c['metadata']['version'])")
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # Tag push: strip the leading 'v' and use as-is
+            # Tag push: strip the leading 'v' and use as-is (e.g. v1.2.3 → 1.2.3)
             VERSION="${{ github.ref_name }}"
             VERSION="${VERSION#v}"
           else
-            # Regular push: append dev build number for uniqueness
-            VERSION="${BASE_VERSION}.dev${{ github.run_number }}"
+            # Regular push: keep major.minor from setup.cfg, use run_number as patch
+            # e.g. setup.cfg has 0.1.0 → version becomes 0.1.19, 0.1.20, 0.1.21 ...
+            MAJOR_MINOR=$(echo "$BASE_VERSION" | cut -d. -f1-2)
+            VERSION="${MAJOR_MINOR}.${{ github.run_number }}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Resolved version: $VERSION"
