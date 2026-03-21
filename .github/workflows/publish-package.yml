@@ -32,7 +32,7 @@ permissions:
 env:
   PYTHON_VERSION: "3.11"
   PACKAGE_NAME: "acme-data-utils"
-  CLOUDSMITH_NAMESPACE: "acme-4ngc"  # Updated to match actual CloudSmith org
+  CLOUDSMITH_NAMESPACE: "acme-4ngc"  # synced from terraform output
   QA_REPO: "acme-pypi-qa"
   PROD_REPO: "acme-pypi-prod"
 
@@ -154,7 +154,7 @@ jobs:
         uses: cloudsmith-io/cloudsmith-cli-action@v2
         with:
           oidc-namespace: ${{ env.CLOUDSMITH_NAMESPACE }}
-          oidc-service-slug: 'github-actions-service-y7fn'
+          oidc-service-slug: 'github-actions-service-4aah'
           # Service slug must match Terraform output: github-actions-service-y7fn
 
       - name: Publish to QA repository
@@ -279,7 +279,7 @@ jobs:
         uses: cloudsmith-io/cloudsmith-cli-action@v2
         with:
           oidc-namespace: ${{ env.CLOUDSMITH_NAMESPACE }}
-          oidc-service-slug: 'github-actions-service-y7fn'
+          oidc-service-slug: 'github-actions-service-4aah'
 
       - name: Get package version
         id: version

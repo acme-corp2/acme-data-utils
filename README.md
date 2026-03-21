@@ -11,12 +11,12 @@ This repository contains a complete solution for migrating Acme Corp's CI/CD pip
 **Challenge**: Migrate `acme-data-utils` Python package from GitLab CI + Artifactory to GitHub Actions + CloudSmith while maintaining QA-to-production promotion workflow.
 
 **Solution Highlights**:
-- ✅ Working GitHub Actions pipeline with 5 stages
-- ✅ OIDC keyless authentication (90-min token lifetime)
-- ✅ Terraform infrastructure as code
+- ✅ Working GitHub Actions pipeline with 4 stages (build → test → publish-qa → promote-prod)
+- ✅ OIDC keyless authentication (no long-lived secrets)
+- ✅ Terraform infrastructure as code (repos, service account, permissions, webhooks)
 - ✅ Comprehensive migration guide
 - ✅ Live demo presentation materials
-- ✅ Built-in vulnerability scanning
+- ✅ Slack notifications on QA publish and production promotion
 - ✅ Improved observability and developer experience
 
 ---
@@ -100,19 +100,23 @@ terraform apply
 terraform output > ../TERRAFORM_OUTPUTS.txt
 ```
 
-### Step 2: Configure OIDC Provider
+Then sync the Terraform outputs into the GitHub Actions workflow automatically:
 
-**Manual step required** (CloudSmith UI):
+```bash
+cd ..
+bash scripts/sync-terraform-config.sh
+```
 
-1. Go to: `https://cloudsmith.io/<your-namespace>/settings/oidc/`
-2. Click "Add OIDC Provider"
-3. Configure:
-   - Provider: **GitHub**
-   - Service Account: `github-actions-service`
-   - Claims:
-     - `repository`: `<your-org>/<your-repo>`
-     - `ref`: `refs/heads/main`
-4. Save
+This updates `CLOUDSMITH_NAMESPACE` and `oidc-service-slug` in the workflow file with the exact values from your Terraform state (including the auto-generated service slug suffix).
+
+### Step 2: OIDC Provider
+
+**Fully managed by Terraform** — no manual UI steps needed.
+
+The `cloudsmith_oidc` resource in `terraform/main.tf` configures the GitHub OIDC provider automatically when you run `terraform apply`. It sets:
+- Provider URL: `https://token.actions.githubusercontent.com`
+- Claims: `repository` and `ref` from your `terraform.tfvars`
+- Service account: the one created by Terraform
 
 ### Step 3: Configure GitHub
 
@@ -148,10 +152,11 @@ git push origin main
 ### Step 5: Approve and Promote
 
 1. Wait for build, test, publish-qa stages to complete
-2. Navigate to Actions → Workflow run → "Review deployments"
-3. Click "Approve and deploy"
-4. Watch promote-prod stage execute
-5. Check GitHub Releases for auto-created release
+2. Check your Slack channel for the "Package Published to QA" notification
+3. Navigate to Actions → Workflow run → "Review deployments"
+4. Click "Approve and deploy"
+5. Watch promote-prod stage execute — package is *moved* from QA to production
+6. Check Slack for the "Package Promoted to Production" notification
 
 ---
 
@@ -162,18 +167,17 @@ git push origin main
 **File**: `.github/workflows/publish-package.yml`
 
 **Features**:
-- 5-stage pipeline (build, test, publish-qa, approval, promote-prod)
-- OIDC keyless authentication
+- 4-stage pipeline (build, test, publish-qa, promote-prod) with manual approval gate via GitHub Environment
+- OIDC keyless authentication (no stored secrets)
 - Automatic vulnerability scanning via CloudSmith
-- PR comments with package links
-- GitHub Release creation
-- Job summaries with installation instructions
+- Slack notifications on QA publish and production promotion
+- Job summaries with package links and next steps
 
 **Key Improvements over GitLab CI**:
 - No secrets to manage (OIDC)
-- Better observability (rich UI, PR comments)
-- Integrated with GitHub (Releases, Environments)
-- Package metadata tagging
+- Better observability (Slack notifications, CloudSmith dashboard)
+- Manual approval gate via GitHub Environments (required reviewers)
+- QA packages *moved* (not copied) to production — clean promotion workflow
 
 ### 2. Terraform Infrastructure ✅
 
@@ -183,8 +187,9 @@ git push origin main
 - CloudSmith QA repository (`acme-pypi-qa`)
 - CloudSmith Production repository (`acme-pypi-prod`)
 - Service account for OIDC (`github-actions-service`)
-- Repository permissions
-- Entitlement tokens for developers
+- Repository permissions for service account
+- Entitlement tokens for developers (read-only)
+- Slack webhooks for QA and production events
 
 **Benefits**:
 - Version-controlled infrastructure
@@ -248,12 +253,11 @@ git push origin main
 
 ### Observability
 
-- ✅ **Real-time Status**: GitHub Actions UI
-- ✅ **Package Metadata**: Tags with commit SHA, workflow ID
-- ✅ **PR Comments**: Installation instructions
-- ✅ **GitHub Releases**: Automatic creation
-- ✅ **Deployment History**: Environment tracking
-- ✅ **CloudSmith Dashboard**: Download stats, security scans
+- ✅ **Real-time Status**: GitHub Actions UI with step summaries
+- ✅ **Slack Notifications**: Team alerts on QA publish and production promotion
+- ✅ **CloudSmith Webhooks**: Native notifications for package events (created, synced, scanned)
+- ✅ **Deployment History**: GitHub Environments track promotion history
+- ✅ **CloudSmith Dashboard**: Download stats, security scans, package metadata
 
 ### Developer Experience
 
@@ -283,19 +287,21 @@ GitHub Push (main)
 └───────┬────────┘
         │
         ▼
-┌────────────────┐
-│  Publish to QA │  ← cloudsmith push (OIDC auth)
-└───────┬────────┘
+┌────────────────────────────────────────┐
+│  Publish to QA                         │  ← cloudsmith push (OIDC auth)
+│  + Slack notification to team          │
+└───────┬────────────────────────────────┘
         │
         ▼
 ┌────────────────┐
-│Manual Approval │  ← GitHub Environment
+│Manual Approval │  ← GitHub Environment (required reviewers)
 └───────┬────────┘
         │
         ▼
-┌────────────────┐
-│ Promote to Prod│  ← cloudsmith copy + GitHub Release
-└────────────────┘
+┌────────────────────────────────────────┐
+│ Promote to Prod                        │  ← cloudsmith move (QA → Prod)
+│ + Slack notification to team           │
+└────────────────────────────────────────┘
 ```
 
 ### Authentication Flow
@@ -342,9 +348,7 @@ Token auto-expires (no cleanup needed)
 ### CloudSmith Setup
 
 1. Organization/namespace created
-2. Terraform applied (repositories, service account)
-3. OIDC provider configured (manual step)
-4. Entitlement tokens generated (for developers)
+2. `terraform apply` — provisions repositories, service account, OIDC provider, webhooks, entitlement tokens (fully automated)
 
 ### Workflow Variables
 
@@ -354,10 +358,12 @@ Edit in `.github/workflows/publish-package.yml`:
 env:
   PYTHON_VERSION: "3.11"
   PACKAGE_NAME: "acme-data-utils"
-  CLOUDSMITH_NAMESPACE: "acme"  # ← Update this
+  CLOUDSMITH_NAMESPACE: "acme-4ngc"  # Your CloudSmith org namespace
   QA_REPO: "acme-pypi-qa"
   PROD_REPO: "acme-pypi-prod"
 ```
+
+> **Note**: After running `terraform apply`, use the outputs to set `CLOUDSMITH_NAMESPACE` and the `oidc-service-slug` in the workflow. The service account slug is auto-generated with a suffix (e.g., `github-actions-service-y7fn`). See `terraform output github_actions_workflow_config` for exact values.
 
 ---
 

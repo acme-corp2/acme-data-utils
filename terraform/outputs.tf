@@ -141,11 +141,11 @@ output "next_steps" {
 
     Next steps:
 
-    1. OIDC Provider Setup (Manual):
-       - Go to: https://cloudsmith.io/${var.cloudsmith_namespace}/settings/oidc/
-       - Add OIDC provider for GitHub
+    1. OIDC Provider Setup:
+       - Managed by Terraform via cloudsmith_oidc resource ✅
+       - Provider URL: https://token.actions.githubusercontent.com
        - Service Account: ${cloudsmith_service.github_actions.slug}
-       - Claims to configure:
+       - Claims configured:
          * repository: ${var.github_repository}
          * ref: ${var.github_ref}
 

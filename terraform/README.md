@@ -91,22 +91,16 @@ terraform output github_actions_workflow_config
 terraform output > ../TERRAFORM_OUTPUTS.txt
 ```
 
-### Step 6: Manual OIDC Setup
+### Step 6: OIDC Setup (Automated)
 
-**IMPORTANT**: OIDC provider configuration must be done manually via CloudSmith UI:
+OIDC provider configuration is **fully managed by Terraform** via the `cloudsmith_oidc` resource.
 
-1. Go to: `https://cloudsmith.io/<your-namespace>/settings/oidc/`
-2. Click "Add OIDC Provider"
-3. Configure:
-   - **Provider**: GitHub
-   - **Service Account**: `github-actions-service` (created by Terraform)
-   - **Claims**:
-     - `repository`: `<your-github-org>/<your-repo>` (e.g., "acme-corp/acme-data-utils")
-     - `ref`: `refs/heads/main`
-     - (Optional) `actor`: Restrict to specific GitHub users
-4. Save the configuration
+Running `terraform apply` automatically:
+- Creates the OIDC provider pointed at `https://token.actions.githubusercontent.com`
+- Sets the required claims (`repository`, `ref`) from your `terraform.tfvars`
+- Links it to the `github-actions-service` account
 
-The service slug will be: `github-actions-service`
+No manual CloudSmith UI steps required.
 
 ## Directory Structure
 

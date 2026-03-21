@@ -65,7 +65,7 @@ This migration brings significant improvements in **security**, **observability*
 |--------|---------------------|-------------------|
 | **QA Repository** | `acme-pypi-qa` | `acme-pypi-qa` |
 | **Prod Repository** | `acme-pypi-prod` | `acme-pypi-prod` |
-| **Web UI** | `https://acme.jfrog.io` | `https://cloudsmith.io/~acme` |
+| **Web UI** | `https://acme.jfrog.io` | `https://cloudsmith.io/~acme-4ngc` |
 | **Authentication** | `.pypirc` with credentials | Entitlement tokens |
 | **Package URLs** | JFrog format | CloudSmith format |
 
@@ -100,13 +100,12 @@ This migration brings significant improvements in **security**, **observability*
 ### 2. Better Observability
 
 **New Features**:
-- 📊 Real-time pipeline status in GitHub Actions UI
+- 📊 Real-time pipeline status in GitHub Actions UI with step summaries
 - 📦 Package details visible in CloudSmith dashboard
 - 🔍 Automatic vulnerability scanning (no external tools needed)
-- 📝 PR comments with package installation links
-- 🏷️ Package tagging with commit SHA, workflow ID
-- 📈 Deployment history and analytics
-- 🔔 GitHub Releases automatically created
+- 🔔 Slack notifications when packages are published to QA and promoted to production
+- 🪝 CloudSmith-native webhooks (via Terraform) for package events (created, synced, security scanned)
+- 📈 Deployment history and analytics via GitHub Environments
 
 ### 3. Built-in Security Scanning
 
@@ -156,9 +155,9 @@ GitLab CI Pipeline (.gitlab-ci.yml)
 GitHub Actions Workflow (.github/workflows/publish-package.yml)
 ├── build         - Build Python package
 ├── test          - Run pytest + coverage
-├── publish-qa    - Publish to CloudSmith QA (OIDC auth)
-├── [APPROVAL]    - GitHub Environment approval gate
-└── promote-prod  - CloudSmith copy to production + GitHub Release
+├── publish-qa    - Publish to CloudSmith QA (OIDC auth) + Slack notification
+├── [APPROVAL]    - GitHub Environment approval gate (required reviewers)
+└── promote-prod  - cloudsmith move QA → Production + Slack notification
 ```
 
 ### Authentication Flow
@@ -200,11 +199,11 @@ export CLOUDSMITH_TOKEN="<get-from-devops-team>"
 
 # Install latest version
 pip install acme-data-utils \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-qa/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-qa/python/simple/
 
 # Install specific version
 pip install acme-data-utils==0.2.0 \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-qa/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-qa/python/simple/
 ```
 
 #### From Production Repository
@@ -217,11 +216,11 @@ export CLOUDSMITH_TOKEN="<get-from-devops-team>"
 
 # Install latest version
 pip install acme-data-utils \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 
 # Install specific version
 pip install acme-data-utils==0.1.0 \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 ```
 
 #### Configure pip (Recommended)
@@ -235,7 +234,7 @@ To avoid typing the index URL every time:
 # Windows: %APPDATA%\pip\pip.ini
 
 [global]
-index-url = https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+index-url = https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 
 [install]
 extra-index-url = https://pypi.org/simple
@@ -245,7 +244,7 @@ extra-index-url = https://pypi.org/simple
 
 ```
 # requirements.txt
---index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+--index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 --extra-index-url https://pypi.org/simple
 
 acme-data-utils==0.1.0
@@ -286,7 +285,7 @@ numpy>=1.24.0
 
 **After: CloudSmith**
 
-- Open `https://cloudsmith.io/~acme/repos/acme-pypi-prod/`
+- Open `https://cloudsmith.io/~acme-4ngc/repos/acme-pypi-prod/`
 - Search for package name
 - View details:
   - ✅ Download statistics
@@ -388,7 +387,7 @@ export CLOUDSMITH_TOKEN="your-token"
 
 # Install from production
 pip install acme-data-utils \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 ```
 
 ### Task 2: Test a QA Version
@@ -400,7 +399,7 @@ source test-env/bin/activate  # Windows: test-env\Scripts\activate
 
 # Install from QA
 pip install acme-data-utils==0.2.0-dev \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-qa/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-qa/python/simple/
 
 # Run tests
 python -c "import acme_data_utils; print(acme_data_utils.__version__)"
@@ -408,7 +407,7 @@ python -c "import acme_data_utils; print(acme_data_utils.__version__)"
 
 ### Task 3: Check Vulnerability Status
 
-1. Go to CloudSmith UI: `https://cloudsmith.io/~acme/repos/acme-pypi-prod/`
+1. Go to CloudSmith UI: `https://cloudsmith.io/~acme-4ngc/repos/acme-pypi-prod/`
 2. Click on package
 3. Navigate to "Security" tab
 4. Review scan results
@@ -424,7 +423,7 @@ cloudsmith vulnerabilities acme/acme-pypi-prod acme-data-utils/0.1.0
 ```bash
 # Using pip
 pip download acme-data-utils \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/ \
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/ \
   --dest ./offline-packages/
 
 # Or using cloudsmith CLI
@@ -452,7 +451,7 @@ cloudsmith list packages acme/acme-pypi-prod --query "name:acme-data-utils"
 
 # Install previous version
 pip install acme-data-utils==0.0.9 \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 ```
 
 **Note**: Cannot delete packages from production (immutability).
@@ -543,7 +542,7 @@ Some settings require manual configuration:
 
 **Symptoms**:
 ```
-ERROR: HTTP error 401 while getting https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/acme-data-utils/
+ERROR: HTTP error 401 while getting https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/acme-data-utils/
 ```
 
 **Causes**:
@@ -580,7 +579,7 @@ ERROR: Could not find a version that satisfies the requirement acme-data-utils==
 2. List available versions:
    ```bash
    pip index versions acme-data-utils \
-     --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+     --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
    ```
 3. Check if package is in QA instead of Production
 
@@ -650,14 +649,14 @@ Error: Package failed security scan
 
 ```bash
 pip install acme-data-utils requests \
-  --index-url https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/ \
+  --index-url https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/ \
   --extra-index-url https://pypi.org/simple
 ```
 
 Or configure in `pip.conf`:
 ```ini
 [global]
-index-url = https://dl.cloudsmith.io/basic/acme/acme-pypi-prod/python/simple/
+index-url = https://dl.cloudsmith.io/basic/acme-4ngc/acme-pypi-prod/python/simple/
 extra-index-url = https://pypi.org/simple
 ```
 
@@ -668,7 +667,7 @@ extra-index-url = https://pypi.org/simple
 ### Q: How do I know which version is in production?
 
 **A**:
-- Check CloudSmith UI: `https://cloudsmith.io/~acme/repos/acme-pypi-prod/`
+- Check CloudSmith UI: `https://cloudsmith.io/~acme-4ngc/repos/acme-pypi-prod/`
 - Check GitHub Releases: `https://github.com/acme-corp/acme-data-utils/releases`
 - Use CLI:
   ```bash
@@ -739,7 +738,7 @@ extra-index-url = https://pypi.org/simple
 
 ### Useful Links
 
-- **CloudSmith Web UI**: https://cloudsmith.io/~acme
+- **CloudSmith Web UI**: https://cloudsmith.io/~acme-4ngc
 - **GitHub Repository**: https://github.com/acme-corp/acme-data-utils
 - **GitHub Actions**: https://github.com/acme-corp/acme-data-utils/actions
 - **Terraform Code**: `terraform/` directory

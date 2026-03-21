@@ -7,7 +7,7 @@ terraform {
   required_providers {
     cloudsmith = {
       source  = "cloudsmith-io/cloudsmith"
-      version = "~> 0.0.68"
+      version = "~> 0.0.69"
     }
   }
 }
@@ -138,30 +138,24 @@ resource "cloudsmith_repository_privileges" "github_actions_prod" {
 }
 
 # ------------------------------------------------------------------------------
-# OIDC Provider Configuration (Manual setup required)
+# OIDC Provider Configuration
 # ------------------------------------------------------------------------------
 
-# Note: As of the current Terraform provider version, OIDC provider configuration
-# may need to be done manually via CloudSmith UI at:
-# https://cloudsmith.io/<namespace>/settings/oidc/
-#
-# Configuration details:
-# - Provider: GitHub
-# - Service Account: github_actions (created above)
-# - Claims:
-#   - repository: <github-org>/<repo-name>
-#   - ref: refs/heads/main
-#   - actor: (optional - specific GitHub users)
-#
-# The provider will generate:
-# - OIDC Namespace: var.cloudsmith_namespace
-# - OIDC Service Slug: github-actions-service
-#
-# These values are used in the GitHub Actions workflow:
-#   uses: cloudsmith-io/cloudsmith-cli-action@v2
-#   with:
-#     oidc-namespace: 'acme'
-#     oidc-service-slug: 'github-actions-service'
+resource "cloudsmith_oidc" "github_actions" {
+  namespace    = var.cloudsmith_namespace
+  name         = "GitHub Actions OIDC"
+  enabled      = true
+  provider_url = "https://token.actions.githubusercontent.com"
+
+  # Restrict tokens to this specific repository and branch
+  claims = {
+    repository = var.github_repository
+    ref        = var.github_ref
+  }
+
+  # Authenticate as the github_actions service account
+  service_accounts = [cloudsmith_service.github_actions.slug]
+}
 
 # ------------------------------------------------------------------------------
 # Entitlement Tokens (Optional - for developers)
