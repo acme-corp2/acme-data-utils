@@ -70,10 +70,11 @@ jobs:
             VERSION="${{ github.ref_name }}"
             VERSION="${VERSION#v}"
           else
-            # Regular push: keep major.minor from setup.cfg, use run_number as patch
-            # e.g. setup.cfg has 0.1.0 → version becomes 0.1.19, 0.1.20, 0.1.21 ...
+            # Regular push: keep major.minor from setup.cfg, use git commit count as patch
+            # e.g. setup.cfg has 0.1.0 → 0.1.1, 0.1.2, 0.1.3 ... (1 per commit)
             MAJOR_MINOR=$(echo "$BASE_VERSION" | cut -d. -f1-2)
-            VERSION="${MAJOR_MINOR}.${{ github.run_number }}"
+            PATCH=$(git rev-list --count HEAD)
+            VERSION="${MAJOR_MINOR}.${PATCH}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Resolved version: $VERSION"

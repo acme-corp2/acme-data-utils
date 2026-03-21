@@ -151,11 +151,11 @@ Each pipeline run:
 
 | Trigger | Version |
 |---|---|
-| Push to main (run #19) | `0.1.19` |
-| Push to main (run #20) | `0.1.20` |
+| Push to main (1st commit after 0.1.0) | `0.1.1` |
+| Push to main (2nd commit) | `0.1.2` |
 | `git tag v1.2.3` | `1.2.3` |
 
-Patch auto-increments using `github.run_number` — always unique, always increasing.
+Patch = total git commit count (`git rev-list --count HEAD`) — starts at 1, +1 per commit.
 To bump major/minor: update `setup.cfg`. For a tagged release: `git tag v0.2.0 && git push origin v0.2.0`
 
 ### Package Promotion Detail

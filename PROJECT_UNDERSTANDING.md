@@ -216,8 +216,8 @@ Developer pushes to main branch (or pushes a version tag like v1.2.3)
 How patch auto-increment works:
 - `setup.cfg` has `version = 0.1.0`
 - Pipeline reads `major.minor` = `0.1`
-- Patch = `github.run_number` (always incrementing per workflow run)
-- Result: `0.1.19`, `0.1.20`, `0.1.21`, ...
+- Patch = `git rev-list --count HEAD` (total commits on branch — starts at 1, +1 per commit)
+- Result: `0.1.1`, `0.1.2`, `0.1.3`, ...
 
 To bump major or minor version: update `setup.cfg` (e.g. `0.2.0`)
 → next push will produce `0.2.<run_number>`
